@@ -1,59 +1,54 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+Saya sedang membangun aplikasi Laravel bernama "Sistem Pelanggaran dan Poin Tata Tertib" untuk SMK Negeri 1 Kota Bekasi. Ini web app berbasis Blade (bukan REST API), autentikasi pakai session bawaan Laravel.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+KONTEKS SISTEM:
+Aplikasi ini mencatat pelanggaran dan apresiasi siswa. Ada 3 peran pengguna dengan model User custom (bukan tabel `users` bawaan Laravel):
+- Kepala Sekolah (role: "Kepala sekolah") = Super Admin — lihat semua data, kelola akun admin, beri apresiasi siswa
+- Wali Kelas & Kesiswaan (role: "Wali kelas" / "Kesiswaan") = Admin — kelola data siswa, input laporan pelanggaran
+- BK (role: "BK") — lihat semua data pelanggaran, lakukan pembinaan/konseling, buat rekap laporan bulanan
 
-## About Laravel
+MODEL YANG SUDAH ADA (jangan dibuat ulang, cukup dipakai):
+- App\Models\User — tabel `user`, primary key `id_user`, kolom: username, nama, password, role (enum: 'Kepala sekolah', 'Wali kelas', 'BK', 'Kesiswaan')
+- App\Models\Kelas — tabel `kelas`, primary key `id_kelas`
+- App\Models\Siswa — tabel `siswa`, primary key `id_siswa`, kolom: id_kelas (FK), nis, nama, total_point
+- App\Models\JenisPelanggaran — tabel `jenis_pelanggaran`, primary key `id_jenis`, kolom: nama_pelanggaran, tingkat, point
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+MODEL YANG PERLU DIBUATKAN CONTROLLER-NYA (model Eloquent-nya sudah ada, tinggal dibuatkan Controller):
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1. App\Models\Pelanggaran — tabel `pelanggaran`, primary key `id_pelanggaran`
+   Kolom: id_user (FK ke user, pelapor), id_siswa (FK ke siswa), tanggal, lokasi, status, id_jenis (FK ke jenis_pelanggaran), poin (snapshot poin saat kejadian, integer), waktu_kejadian (time, nullable), kronologi (text, nullable)
+   Relasi: belongsTo Siswa, belongsTo JenisPelanggaran, belongsTo User (sebagai pelapor), hasMany BuktiPelanggaran, hasMany TindakLanjut
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+2. App\Models\BuktiPelanggaran — tabel `bukti_pelanggaran`, primary key `id_bukti`
+   Kolom: id_pelanggaran (FK), jenis_bukti (enum: 'foto','video','catatan_saksi','lainnya'), file_path (nullable), keterangan (nullable)
+   Relasi: belongsTo Pelanggaran
 
-## Learning Laravel
+3. App\Models\TindakLanjut — tabel `tindak_lanjut`, primary key `id_tindaklanjut`
+   Kolom: id_pelanggaran (FK), id_user (FK, yang menangani), tanggal, jenis_tindakan, hasil
+   Relasi: belongsTo Pelanggaran, belongsTo User
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+4. App\Models\Konseling — tabel `konseling`, primary key `id_konseling`
+5. App\Models\SesiKonseling — tabel `sesi_konseling`, primary key `id_sesi_konseling`
+   Kolom: id_konseling (FK), id_siswa (FK), tanggal, permasalahan, id_user (FK, BK yang menangani), solusi (nullable), hasil (nullable)
+   Relasi: belongsTo Konseling, belongsTo Siswa, belongsTo User
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+BUSINESS LOGIC YANG WAJIB DIIMPLEMENTASIKAN:
 
-## Laravel Sponsors
+1. Saat PelanggaranController@store berhasil menyimpan data baru:
+   - Ambil nilai `point` dari JenisPelanggaran yang dipilih, simpan sebagai snapshot ke kolom `poin` di Pelanggaran (jangan reference langsung ke jenis_pelanggaran.point di masa depan)
+   - Tambahkan nilai poin tersebut ke `total_point` milik Siswa terkait
+   - Bungkus proses simpan pelanggaran + update total_point siswa dalam satu DB transaction (DB::transaction)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+2. Role-based access:
+   - Hanya user dengan role "Wali kelas" atau "Kesiswaan" yang boleh input pelanggaran baru (store/create)
+   - Role "BK" hanya boleh melihat data pelanggaran (index/show), tidak boleh create/edit/delete pelanggaran, tapi boleh create/edit TindakLanjut dan Konseling/SesiKonseling
+   - Role "Kepala sekolah" hanya boleh melihat (read-only) semua data di atas
+   - Gunakan middleware atau otorisasi berbasis role (boleh pakai Gate/Policy atau pengecekan role langsung, sesuaikan yang paling sederhana untuk skala proyek ini)
 
-### Premium Partners
+TUGAS:
+Buatkan Controller berikut dengan method resource standar (index, create, store, show, edit, update, destroy) sesuai aturan akses di atas, beserta validasi request untuk setiap store/update (pakai `$request->validate()` langsung di controller, tidak perlu Form Request class terpisah dulu):
+1. PelanggaranController (termasuk logic akumulasi poin di atas)
+2. BuktiPelanggaranController (untuk tambah/hapus lampiran bukti per pelanggaran; boleh berupa nested resource dari Pelanggaran)
+3. TindakLanjutController
+4. KonselingController dan SesiKonselingController
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Untuk setiap controller, tampilkan juga contoh route resource-nya yang perlu didaftarkan di routes/web.php (dikelompokkan pakai middleware auth + pengecekan role).
