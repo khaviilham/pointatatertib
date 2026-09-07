@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class TindakLanjut extends Model
@@ -10,6 +11,7 @@ class TindakLanjut extends Model
 
     protected $table = 'tindak_lanjut';
     protected $primaryKey = 'id_tindaklanjut';
+
     protected $fillable = [
         'id_pelanggaran',
         'id_user',
@@ -17,10 +19,19 @@ class TindakLanjut extends Model
         'jenis_tindakan',
         'hasil',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'tanggal' => 'date',
+        ];
+    }
+
     public function pelanggaran()
     {
         return $this->belongsTo(Pelanggaran::class, 'id_pelanggaran', 'id_pelanggaran');
     }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user', 'id_user');
