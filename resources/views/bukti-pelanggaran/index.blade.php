@@ -25,8 +25,10 @@
                             <button class="px-3 py-2 bg-gray-800 text-white rounded-md text-sm">Filter</button>
                         </form>
 
-                        @if (in_array(auth()->user()->role, ['Wali kelas', 'Kesiswaan'], true))
+                        @if (in_array(auth()->user()->role, ['Wali kelas', 'Kesiswaan'], true) && request('pelanggaran_id'))
                             <a href="{{ route('bukti-pelanggaran.create', ['pelanggaran' => request('pelanggaran_id')]) }}" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm">+ Upload Bukti</a>
+                        @elseif (in_array(auth()->user()->role, ['Wali kelas', 'Kesiswaan'], true))
+                            <a href="{{ route('pelanggaran.index') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm">Pilih Pelanggaran</a>
                         @endif
                     </div>
 

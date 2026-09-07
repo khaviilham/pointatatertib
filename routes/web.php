@@ -49,11 +49,14 @@ Route::middleware('auth')->group(function () {
 
     /*
     |----------------------------------------------------------------------
-    | BUKTI PELANGGARAN (nested resource)
+    | BUKTI PELANGGARAN
     |----------------------------------------------------------------------
+    | - index : flat (list semua bukti, tidak butuh parent context)
+    | - create/store : nested di pelanggaran (butuh parent context)
+    | - show/destroy : flat by bukti id
     | Hanya Wali kelas & Kesiswaan yang boleh tambah/hapus lampiran.
     */
-    Route::get('pelanggaran/{pelanggaran}/bukti', [BuktiPelanggaranController::class, 'index'])
+    Route::get('bukti-pelanggaran', [BuktiPelanggaranController::class, 'index'])
         ->name('bukti-pelanggaran.index');
     Route::get('pelanggaran/{pelanggaran}/bukti/create', [BuktiPelanggaranController::class, 'create'])
         ->middleware('role:Wali kelas,Kesiswaan')
