@@ -26,6 +26,15 @@ return new class extends Migration
                 ->references('id_siswa')
                 ->on('siswa')
                 ->onDelete('cascade');
+            
+            $table->unsignedBigInteger('id_user'); // BK yang menangani sesi ini
+            $table->text('solusi')->nullable();
+            $table->text('hasil')->nullable();
+
+            $table->foreign('id_user')
+                ->references('id_user')
+                ->on('user')
+                ->onDelete('cascade');
 
             $table->timestamps();
         });

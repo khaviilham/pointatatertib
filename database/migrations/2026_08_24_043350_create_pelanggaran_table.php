@@ -34,6 +34,10 @@ return new class extends Migration
                 ->references('id_jenis')
                 ->on('jenis_pelanggaran')
                 ->onDelete('cascade');
+            
+            $table->unsignedInteger('poin')->default(0); // snapshot poin dari jenis_pelanggaran saat kejadian dicatat
+            $table->time('waktu_kejadian')->nullable();
+            $table->text('kronologi')->nullable();
 
             $table->timestamps();
         });
