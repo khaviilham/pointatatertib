@@ -11,13 +11,20 @@ use Illuminate\Support\Facades\Storage;
 class BuktiPelanggaranController extends Controller
 {
     /**
-     * Display a listing for a specific pelanggaran.
+     * Display a listing of all bukti pelanggaran.
+     * Optional filter by pelanggaran_id via ?pelanggaran_id=.
      */
-    public function index(Pelanggaran $pelanggaran)
+    public function index(Request $request)
     {
-        $bukti = $pelanggaran->buktiPelanggaran()->orderByDesc('id_bukti')->get();
+        $query = BuktiPelanggaran::query()->with('pelanggaran')->orderByDesc('id_bukti');
 
-        return view('bukti-pelanggaran.index', compact('pelanggaran', 'bukti'));
+        if ($request->filled('pelanggaran_id')) {
+            $query->where('id_pelanggaran', $request->pelanggaran_id);
+        }
+
+        $bukti = $query->paginate(15)->withQueryString();
+
+        return view('bukti-pelanggaran.index', compact('bukti'));
     }
 
     /**
